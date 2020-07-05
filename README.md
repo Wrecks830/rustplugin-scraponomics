@@ -1,9 +1,9 @@
 Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors where players may deposit or withdraw their precious scrap for a small fee.
 
-- [x] UI adjusts properly to any resolution
-- [x] Option to restrict ATM access from player placed vending machines
-- [x] Option to automatically reset data on map wipe
-- [x] Set fees and starting balance
+* UI adjusts properly to any resolution
+* Option to restrict ATM access from player placed vending machines
+* Option to automatically reset data on map wipe
+* Set fees and starting balance
 
 
 ## Usage
