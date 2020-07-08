@@ -37,7 +37,7 @@ The UI will appear when using Vending Machine or Bandit Vendor:
 
 ## Developer API
 ```csharp
-private object SetBalance(ulong userId, int balance)  // returns true if successful, else null
+private object SetBalance(ulong userId, int balance);  // returns true if successful, else null
 
-private object GetBalance(ulong userId)  // returns int if successful, else null
+private object GetBalance(ulong userId);  // returns int if successful, else null
 ```
