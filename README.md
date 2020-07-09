@@ -41,3 +41,7 @@ private object SetBalance(ulong userId, int balance);  // returns true if succes
 
 private object GetBalance(ulong userId);  // returns int if successful, else null
 ```
+
+## Credits
+
+CUI inspired by **Skipcast**'s Furnace Splitter plugin
