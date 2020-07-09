@@ -1,18 +1,17 @@
-
 using System;
 using System.Collections.Generic;
 using Oxide.Core;
 using Oxide.Game.Rust.Cui;
 using UnityEngine;
 
+
 namespace Oxide.Plugins
 {
-
-    [Info("ScraponomicsLite", "haggbart", "0.3.1")]
-    [Description("Adds ATM UI with intuitive functionality to vending machines and bandit vendors " +
-                 "where players deposit and withdraw their precious scrap for a small fee.")]
+    [Info("ScraponomicsLite", "haggbart", "0.4.2")]
+    [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
+        private DateTime lastSaveTime;
         
         #region localization
         
@@ -22,7 +21,8 @@ namespace Oxide.Plugins
         private const string LOC_AMOUNT = "Amount";
         private const string LOC_BALANCE = "Balance";
         private const string LOC_ATM = "ATM";
-        
+        private const string LOC_REWARD_INTEREST = "RewardInterst";
+
         protected override void LoadDefaultMessages()
         {
             lang.RegisterMessages(new Dictionary<string, string>
@@ -32,26 +32,28 @@ namespace Oxide.Plugins
                 [LOC_WITHDRAW] = "Withdraw",
                 [LOC_BALANCE] = "Balance: {0} scrap",
                 [LOC_AMOUNT] = "amount",
-                [LOC_ATM] = "ATM"
+                [LOC_ATM] = "ATM",
+                [LOC_REWARD_INTEREST] = "You've earned {0} scrap in interest."
             }, this);
         }
 
         #endregion localization
-
+        
 
         #region data
         private void SaveData() =>
-            Interface.Oxide.DataFileSystem.WriteObject(Title, _playerBalances);
+            Interface.Oxide.DataFileSystem.WriteObject(Title, playerData);
         
         private void ReadData() =>
-            _playerBalances = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, PlayerData>>(Title);
+            playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, PlayerData>>(Title);
 
-        private static Dictionary<ulong, PlayerData> _playerBalances;
-        private static readonly Dictionary<ulong, PlayerPreference> _playerPrefs = new Dictionary<ulong, PlayerPreference>();
+        private static Dictionary<ulong, PlayerData> playerData;
+        private static readonly Dictionary<ulong, PlayerPreference> playerPrefs = new Dictionary<ulong, PlayerPreference>();
 
         private class PlayerData
         {
             public int scrap { get; set; }
+            public DateTime lastInterest = DateTime.UtcNow;
         }
         
         private class PlayerPreference
@@ -71,6 +73,7 @@ namespace Oxide.Plugins
             public int startingBalance;
             public bool allowPlayerVendingMachines;
             public bool resetOnMapWipe;
+            public float interestRate;
         }
         
         protected override void LoadDefaultConfig() => Config.WriteObject(GetDefaultConfig(), true);
@@ -83,9 +86,11 @@ namespace Oxide.Plugins
                 feesFraction = 0.05f,
                 startingBalance = 50,
                 allowPlayerVendingMachines = false,
-                resetOnMapWipe = true
+                resetOnMapWipe = true,
+                interestRate = 0.10f
             };
         }
+        
         
         #endregion config
         
@@ -93,12 +98,14 @@ namespace Oxide.Plugins
 
         private void Init()
         {
-
+            
             config = Config.ReadObject<PluginConfig>();
 
             SaveConfig();
             
             ReadData();
+            
+            lastSaveTime = DateTime.UtcNow;
         }
 
         private void InitPlayerData(BasePlayer player)
@@ -107,7 +114,7 @@ namespace Oxide.Plugins
             {
                 scrap = config.startingBalance
             };
-            _playerBalances.Add(player.userID, playerbalances);
+            playerData.Add(player.userID, playerbalances);
         }
         
         private static void InitPlayerPerference(BasePlayer player)
@@ -116,7 +123,7 @@ namespace Oxide.Plugins
             {
                 amount = 100
             };
-            _playerPrefs.Add(player.userID, playerPreference);
+            playerPrefs.Add(player.userID, playerPreference);
         }
 
         private void Unload()
@@ -131,14 +138,45 @@ namespace Oxide.Plugins
         
         #endregion init
         
+        
+        #region methods
+        
+        private void DoInterest(BasePlayer player)
+        {
+            PlayerData data = playerData[player.userID];
+
+            if (data.scrap < 1) return;
+            
+            TimeSpan timeSinceLastInterest = DateTime.UtcNow - data.lastInterest;
+            if (timeSinceLastInterest.Days == 0)
+            {
+                return;
+            }
+            
+            int interest = (int) (data.scrap * Math.Pow(config.interestRate + 1.0f, 
+                timeSinceLastInterest.TotalSeconds / 86400.0)) - data.scrap;
+            
+            if (interest < 1) return;
+            data.scrap += interest;
+            data.lastInterest = DateTime.UtcNow;
+
+            SendReply(player, lang.GetMessage(LOC_REWARD_INTEREST, this, player.UserIDString), interest);
+        }
+        
+        #endregion methods
+
         #region hooks
         
-        private void OnServerSave() => SaveData();
-        
+        private void OnServerSave()
+        {
+            SaveData();
+            lastSaveTime = DateTime.UtcNow;
+        }
+
         private void OnNewSave(string filename)
         {
             if (!config.resetOnMapWipe) return;
-            _playerBalances = new Dictionary<ulong, PlayerData>();
+            playerData = new Dictionary<ulong, PlayerData>();
             foreach (BasePlayer player in BasePlayer.activePlayerList)
             {
                 DestroyGuiAll(player);
@@ -150,16 +188,18 @@ namespace Oxide.Plugins
         {
             if (!(machine is NPCVendingMachine) && !config.allowPlayerVendingMachines) return;
             
-            if (!_playerBalances.ContainsKey(player.userID))
+            if (!playerData.ContainsKey(player.userID))
             {
                 InitPlayerData(player);
             }
             
-            if (!_playerPrefs.ContainsKey(player.userID))
+            if (!playerPrefs.ContainsKey(player.userID))
             {
                 InitPlayerPerference(player);
             }
             
+            DoInterest(player);
+
             NextTick(() => CreateUi(player)); 
         }
         
@@ -173,40 +213,44 @@ namespace Oxide.Plugins
 
         private static void DestroyGuiAll(BasePlayer player)
         {
-            CuiHelper.DestroyUi(player, "BankUI");
+            CuiHelper.DestroyUi(player, CUI_BANK_NAME);
         }
         
         #endregion hooks
 
         #region bank CUI
         
-        private const string CONTENT_COLOR = "0.7 0.7 0.7 1.0";
-        private const int CONTENT_SIZE = 10;
-        private const string TOGGLE_BUTTON_COLOR = "0.415 0.5 0.258 0.4";
-        private const string TOGGLE_BUTTON_TEXT_COLOR = "0.607 0.705 0.431";
-        private const string BUTTON_COLOR = "0.75 0.75 0.75 0.3";
-        private const string BUTTON_TEXT_COLOR = "0.77 0.68 0.68 1";
+        private const int CUI_MAIN_FONTSIZE = 10;
+        private const string CUI_MAIN_FONT_COLOR = "0.7 0.7 0.7 1.0";
+        private const string CUI_GREEN_BUTTON_COLOR = "0.415 0.5 0.258 0.4";
+        private const string CUI_GREEN_BUTTON_FONT_COLOR = "0.607 0.705 0.431";
+        private const string CUI_GRAY_BUTTON_COLOR = "0.75 0.75 0.75 0.3";
+        private const string CUI_BUTTON_FONT_COLOR = "0.77 0.68 0.68 1";
+        private const string CUI_BANK_NAME = "BankUI";
+        private const string CUI_BANK_HEADER_NAME = "header";
+        private const string CUI_BANK_CONTENT_NAME = "content";
+        
         private const string ANCHOR_MIN = "0.5 0.0";
         private const string ANCHOR_MAX = "0.67 0.0";
         private const string OFFSET_MIN = "193 16";
         private const string OFFSET_MAX = "200 97";
 
-        private void CreateUi(BasePlayer player)
+        private void CreateUi(BasePlayer player) 
         {
             if (!player.inventory.loot.IsLooting()) return;
 
-            int amount = _playerPrefs[player.userID].amount;
+            int amount = playerPrefs[player.userID].amount;
             
 
             double nextDecrement = amount / 1.5;
             double nextIncrement = amount * 1.5;
             
-            CuiHelper.DestroyUi(player, "BankUI");
+            CuiHelper.DestroyUi(player, CUI_BANK_NAME);
             
-            var cuiElementContainer = new CuiElementContainer
+            var bankCui = new CuiElementContainer
             {
                 {
-                    new CuiPanel
+                    new CuiPanel // main panel
                     {
                         Image = new CuiImageComponent {Color = "0 0 0 0"},
                         RectTransform =
@@ -215,136 +259,135 @@ namespace Oxide.Plugins
                             OffsetMin = OFFSET_MIN, OffsetMax = OFFSET_MAX
                         }
                     },
-                    "Hud.Menu", "BankUI"
+                    "Hud.Menu", CUI_BANK_NAME
                 },
                 {
-                    new CuiPanel
+                    new CuiPanel // header
                     {
-                        Image = new CuiImageComponent {Color = "0.75 0.75 0.75 0.2"},
+                        Image = new CuiImageComponent {Color = "0.75 0.75 0.75 0.35"},
                         RectTransform = {AnchorMin = "0 0.775", AnchorMax = "1 1"}
                     },
-                    "BankUI", "header"
+                    CUI_BANK_NAME, CUI_BANK_HEADER_NAME
                 },
                 {
-                    new CuiLabel
+                    new CuiLabel // header label
                     {
                         RectTransform = {AnchorMin = "0.051 0", AnchorMax = "1 0.95"},
                         Text = {Text = lang.GetMessage(
                             LOC_ATM, this, player.UserIDString), 
                             Align = TextAnchor.MiddleLeft, Color = "0.77 0.7 0.7 1", FontSize = 13}
                     },
-                    "header"
+                    CUI_BANK_HEADER_NAME
                 },
                 {
-                    new CuiPanel
+                    new CuiPanel // content panel
                     {
-                        Image = new CuiImageComponent {Color = "0.65 0.65 0.65 0.15"},
+                        Image = new CuiImageComponent {Color = "0.65 0.65 0.65 0.25"},
                         RectTransform = {AnchorMin = "0 0", AnchorMax = "1 0.74"}
                     },
-                    "BankUI", "content"
+                    CUI_BANK_NAME, CUI_BANK_CONTENT_NAME
                 },
                 {
-                    new CuiLabel
+                    new CuiLabel // balance label
                     {
                         RectTransform = {AnchorMin = "0.02 0.7", AnchorMax = "0.98 1"},
                         Text =
                         {
-                            // Text = "Balance: " + _playerBalances[player.userID].scrap + " scrap",
                             Text = string.Format(lang.GetMessage(LOC_BALANCE, this, 
-                                player.UserIDString), _playerBalances[player.userID].scrap),
+                                player.UserIDString), playerData[player.userID].scrap),
                             Align = TextAnchor.MiddleLeft,
-                            Color = CONTENT_COLOR,
-                            FontSize = CONTENT_SIZE
+                            Color = CUI_MAIN_FONT_COLOR,
+                            FontSize = CUI_MAIN_FONTSIZE
                         }
                     },
-                    "content"
+                    CUI_BANK_CONTENT_NAME
                 },
                 {
-                    new CuiButton
+                    new CuiButton // deposit button
                     {
                         RectTransform = {AnchorMin = "0.02 0.4", AnchorMax = "0.25 0.7"},
-                        Button = {Command = "deposit " + amount, Color = TOGGLE_BUTTON_COLOR},
+                        Button = {Command = "deposit " + amount, Color = CUI_GREEN_BUTTON_COLOR},
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
                             Text = lang.GetMessage(LOC_DEPOSIT, this, player.UserIDString),
-                            Color = TOGGLE_BUTTON_TEXT_COLOR,
+                            Color = CUI_GREEN_BUTTON_FONT_COLOR,
                             FontSize = 11
                         }
                     },
-                    "content"
+                    CUI_BANK_CONTENT_NAME
                 },
                 {
-                    new CuiButton
+                    new CuiButton // withdraw button
                     {
                         RectTransform = {AnchorMin = "0.27 0.4", AnchorMax = "0.52 0.7"},
-                        Button = {Command = "withdraw " + amount, Color = BUTTON_COLOR},
+                        Button = {Command = "withdraw " + amount, Color = CUI_GRAY_BUTTON_COLOR},
                         Text = {Align = TextAnchor.MiddleCenter, Text = lang.GetMessage(
-                            LOC_WITHDRAW, this, player.UserIDString), Color = CONTENT_COLOR, FontSize = 11}
+                            LOC_WITHDRAW, this, player.UserIDString), Color = CUI_MAIN_FONT_COLOR, FontSize = 11}
                     },
-                    "content"
+                    CUI_BANK_CONTENT_NAME
                 },
                 {
-                    new CuiButton
+                    new CuiButton // decrement button
                     {
                         RectTransform = {AnchorMin = "0.02 0.05", AnchorMax = "0.07 0.35"},
-                        Button = {Command = "setamount " + nextDecrement, Color = BUTTON_COLOR},
+                        Button = {Command = "setamount " + nextDecrement, Color = CUI_GRAY_BUTTON_COLOR},
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
                             Text = "<",
-                            Color = BUTTON_TEXT_COLOR,
-                            FontSize = CONTENT_SIZE
+                            Color = CUI_BUTTON_FONT_COLOR,
+                            FontSize = CUI_MAIN_FONTSIZE
                         }
                     },
-                    "content"
+                    CUI_BANK_CONTENT_NAME
                 },
                 {
-                    new CuiLabel
+                    new CuiLabel // amount label
                     {
                         RectTransform = {AnchorMin = "0.08 0.05", AnchorMax = "0.19 0.35"},
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
                             Text = amount.ToString(),
-                            Color = CONTENT_COLOR,
-                            FontSize = CONTENT_SIZE
+                            Color = CUI_MAIN_FONT_COLOR,
+                            FontSize = CUI_MAIN_FONTSIZE
                         }
                     },
-                    "content"
+                    CUI_BANK_CONTENT_NAME
                 },
                 {
-                    new CuiButton
+                    new CuiButton // increment button
                     {
                         RectTransform = {AnchorMin = "0.19 0.05", AnchorMax = "0.25 0.35"},
-                        Button = {Command = "setamount " + nextIncrement, Color = BUTTON_COLOR},
+                        Button = {Command = "setamount " + nextIncrement, Color = CUI_GRAY_BUTTON_COLOR},
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
                             Text = ">",
-                            Color = BUTTON_TEXT_COLOR,
-                            FontSize = CONTENT_SIZE
+                            Color = CUI_BUTTON_FONT_COLOR,
+                            FontSize = CUI_MAIN_FONTSIZE
                         }
                     },
-                    "content"
+                    CUI_BANK_CONTENT_NAME
                 },
                 {
-                    new CuiLabel
+                    new CuiLabel // amount text label
                     {
                         RectTransform = {AnchorMin = "0.27 0.05", AnchorMax = "1 0.35"},
                         Text =
                         {
                             Align = TextAnchor.MiddleLeft,
                             Text = lang.GetMessage(LOC_AMOUNT, this, player.UserIDString),
-                            Color = CONTENT_COLOR,
-                            FontSize = CONTENT_SIZE
+                            Color = CUI_MAIN_FONT_COLOR,
+                            FontSize = CUI_MAIN_FONTSIZE
                         }
                     },
-                    "content"
+                    CUI_BANK_CONTENT_NAME
                 }
             };
 
-            CuiHelper.AddUi(player, cuiElementContainer);
+            CuiHelper.AddUi(player, bankCui);
         }
 
         [ConsoleCommand("setamount")]
@@ -363,7 +406,7 @@ namespace Oxide.Plugins
             else if (amount > 1000) amount = 1000;
 
             if (arg.Args.Length != 1) return;
-            _playerPrefs[player.userID].amount = (short) amount;
+            playerPrefs[player.userID].amount = (short) amount;
             CreateUi(player);
         }
 
@@ -382,7 +425,7 @@ namespace Oxide.Plugins
                 amount = player.inventory.GetAmount(-932201673);
             }
             if (amount == 0) return;
-            _playerBalances[player.userID].scrap += amount;
+            playerData[player.userID].scrap += amount;
             player.inventory.Take(null, -932201673, amount);
             CreateUi(player);
         }
@@ -397,13 +440,13 @@ namespace Oxide.Plugins
             int amount;
             if (!int.TryParse(arg.Args[0], out amount)) return;
 
-            int balance = _playerBalances[player.userID].scrap;
+            int balance = playerData[player.userID].scrap;
             if (balance < amount) amount = balance;
             var tax = (int)Math.Round(amount * config.feesFraction);
 
             if (tax < 1) tax = 1;
-            if (amount < 2) return;
-            _playerBalances[player.userID].scrap -= amount + tax;
+            if (amount < 1) return;
+            playerData[player.userID].scrap -= amount + tax;
             CreateUi(player);
             Item item = ItemManager.CreateByItemID(-932201673, amount);
             player.inventory.GiveItem(item);
@@ -417,16 +460,16 @@ namespace Oxide.Plugins
 
         private object SetBalance(ulong userId, int balance)
         {
-            if (!_playerBalances.ContainsKey(userId) && !TryInitPlayer(userId)) return null;
+            if (!playerData.ContainsKey(userId) && !TryInitPlayer(userId)) return null;
 
-            _playerBalances[userId].scrap = balance;
+            playerData[userId].scrap = balance;
             return true;
         }
 
         private object GetBalance(ulong userId)
         {
-            if (!_playerBalances.ContainsKey(userId) && !TryInitPlayer(userId)) return null;
-            return _playerBalances[userId].scrap;
+            if (!playerData.ContainsKey(userId) && !TryInitPlayer(userId)) return null;
+            return playerData[userId].scrap;
         }
 
         private bool TryInitPlayer(ulong userId)
