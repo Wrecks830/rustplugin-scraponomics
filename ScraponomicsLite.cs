@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart", "0.4.4")]
+    [Info("Scraponomics Lite", "haggbart", "0.4.5")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
