@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("ScraponomicsLite", "haggbart", "0.4.2")]
+    [Info("Scraponomics Lite", "haggbart", "0.4.3")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
@@ -42,10 +42,10 @@ namespace Oxide.Plugins
 
         #region data
         private void SaveData() =>
-            Interface.Oxide.DataFileSystem.WriteObject(Title, playerData);
-        
+            Interface.Oxide.DataFileSystem.WriteObject(Name, playerData);
+
         private void ReadData() =>
-            playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, PlayerData>>(Title);
+            playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, PlayerData>>(Name);
 
         private static Dictionary<ulong, PlayerData> playerData;
         private static readonly Dictionary<ulong, PlayerPreference> playerPrefs = new Dictionary<ulong, PlayerPreference>();
