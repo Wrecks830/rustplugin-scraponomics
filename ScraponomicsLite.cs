@@ -7,11 +7,10 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart", "0.4.3")]
+    [Info("Scraponomics Lite", "haggbart", "0.4.4")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
-        private DateTime lastSaveTime;
         
         #region localization
         
@@ -101,11 +100,14 @@ namespace Oxide.Plugins
             
             config = Config.ReadObject<PluginConfig>();
 
+            if (!config.resetOnMapWipe)
+            {
+                Unsubscribe(nameof(OnNewSave));
+            }
+
             SaveConfig();
             
             ReadData();
-            
-            lastSaveTime = DateTime.UtcNow;
         }
 
         private void InitPlayerData(BasePlayer player)
@@ -170,17 +172,11 @@ namespace Oxide.Plugins
         private void OnServerSave()
         {
             SaveData();
-            lastSaveTime = DateTime.UtcNow;
         }
 
         private void OnNewSave(string filename)
         {
-            if (!config.resetOnMapWipe) return;
             playerData = new Dictionary<ulong, PlayerData>();
-            foreach (BasePlayer player in BasePlayer.activePlayerList)
-            {
-                DestroyGuiAll(player);
-            }
             SaveData();
         }
 
@@ -193,22 +189,14 @@ namespace Oxide.Plugins
                 InitPlayerData(player);
             }
             
-            if (!playerPrefs.ContainsKey(player.userID))
-            {
-                InitPlayerPerference(player);
-            }
-            
             DoInterest(player);
 
             NextTick(() => CreateUi(player)); 
         }
         
-        private void OnLootEntityEnd(BasePlayer player, BaseCombatEntity entity)
+        private void OnLootEntityEnd(BasePlayer player, VendingMachine machine)
         {
-            if (entity is VendingMachine)
-            {
-                DestroyGuiAll(player);
-            }
+            DestroyGuiAll(player);
         }
 
         private static void DestroyGuiAll(BasePlayer player)
@@ -238,6 +226,12 @@ namespace Oxide.Plugins
         private void CreateUi(BasePlayer player) 
         {
             if (!player.inventory.loot.IsLooting()) return;
+            
+            
+            if (!playerPrefs.ContainsKey(player.userID))
+            {
+                InitPlayerPerference(player);
+            }
 
             int amount = playerPrefs[player.userID].amount;
             
@@ -400,12 +394,17 @@ namespace Oxide.Plugins
             double amount;
             if (!double.TryParse(arg.Args[0], out amount)) return;
             
-            amount = Math.Round(Convert.ToDouble(arg.Args[0]) / 10) * 10;
+            amount = Math.Round(amount / 10) * 10;
             
             if (amount < 10) amount = 10;
             else if (amount > 1000) amount = 1000;
 
             if (arg.Args.Length != 1) return;
+            
+            if (!playerPrefs.ContainsKey(player.userID))
+            {
+                InitPlayerPerference(player);
+            }
             playerPrefs[player.userID].amount = (short) amount;
             CreateUi(player);
         }
@@ -425,6 +424,11 @@ namespace Oxide.Plugins
                 amount = player.inventory.GetAmount(-932201673);
             }
             if (amount == 0) return;
+            
+            if (!playerData.ContainsKey(player.userID))
+            {
+                InitPlayerData(player);
+            }
             playerData[player.userID].scrap += amount;
             player.inventory.Take(null, -932201673, amount);
             CreateUi(player);
@@ -440,15 +444,21 @@ namespace Oxide.Plugins
             int amount;
             if (!int.TryParse(arg.Args[0], out amount)) return;
 
+            if (!playerData.ContainsKey(player.userID))
+            {
+                InitPlayerData(player);
+            }
             int balance = playerData[player.userID].scrap;
             if (balance < amount) amount = balance;
             var tax = (int)Math.Round(amount * config.feesFraction);
 
             if (tax < 1) tax = 1;
             if (amount < 1) return;
+            
             playerData[player.userID].scrap -= amount + tax;
             CreateUi(player);
             Item item = ItemManager.CreateByItemID(-932201673, amount);
+            if (item == null) return;
             player.inventory.GiveItem(item);
             SendReply(player, string.Format(
                 lang.GetMessage(LOC_PAID_BROKERAGE, this, player.UserIDString), tax));
