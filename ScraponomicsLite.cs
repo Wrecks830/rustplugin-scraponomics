@@ -11,7 +11,6 @@ namespace Oxide.Plugins
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
-        
         #region localization
         
         private const string LOC_PAID_BROKERAGE = "PaidBrokerage";
@@ -97,7 +96,6 @@ namespace Oxide.Plugins
 
         private void Init()
         {
-            
             config = Config.ReadObject<PluginConfig>();
 
             if (!config.resetOnMapWipe)
@@ -106,7 +104,6 @@ namespace Oxide.Plugins
             }
 
             SaveConfig();
-            
             ReadData();
         }
 
@@ -300,7 +297,7 @@ namespace Oxide.Plugins
                     new CuiButton // deposit button
                     {
                         RectTransform = {AnchorMin = "0.02 0.4", AnchorMax = "0.25 0.7"},
-                        Button = {Command = "deposit " + amount, Color = CUI_GREEN_BUTTON_COLOR},
+                        Button = {Command = "sc.deposit " + amount, Color = CUI_GREEN_BUTTON_COLOR},
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
@@ -315,7 +312,7 @@ namespace Oxide.Plugins
                     new CuiButton // withdraw button
                     {
                         RectTransform = {AnchorMin = "0.27 0.4", AnchorMax = "0.52 0.7"},
-                        Button = {Command = "withdraw " + amount, Color = CUI_GRAY_BUTTON_COLOR},
+                        Button = {Command = "sc.withdraw " + amount, Color = CUI_GRAY_BUTTON_COLOR},
                         Text = {Align = TextAnchor.MiddleCenter, Text = lang.GetMessage(
                             LOC_WITHDRAW, this, player.UserIDString), Color = CUI_MAIN_FONT_COLOR, FontSize = 11}
                     },
@@ -325,7 +322,7 @@ namespace Oxide.Plugins
                     new CuiButton // decrement button
                     {
                         RectTransform = {AnchorMin = "0.02 0.05", AnchorMax = "0.07 0.35"},
-                        Button = {Command = "setamount " + nextDecrement, Color = CUI_GRAY_BUTTON_COLOR},
+                        Button = {Command = "sc.setamount " + nextDecrement, Color = CUI_GRAY_BUTTON_COLOR},
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
@@ -354,7 +351,7 @@ namespace Oxide.Plugins
                     new CuiButton // increment button
                     {
                         RectTransform = {AnchorMin = "0.19 0.05", AnchorMax = "0.25 0.35"},
-                        Button = {Command = "setamount " + nextIncrement, Color = CUI_GRAY_BUTTON_COLOR},
+                        Button = {Command = "sc.setamount " + nextIncrement, Color = CUI_GRAY_BUTTON_COLOR},
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
@@ -384,7 +381,7 @@ namespace Oxide.Plugins
             CuiHelper.AddUi(player, bankCui);
         }
 
-        [ConsoleCommand("setamount")]
+        [ConsoleCommand("sc.setamount")]
         private void CmdSetAmount(ConsoleSystem.Arg arg)
         {
             var player = arg.Connection.player as BasePlayer;
@@ -409,8 +406,8 @@ namespace Oxide.Plugins
             CreateUi(player);
         }
 
-        [ConsoleCommand("deposit")]
-        private void Cmd_deposit(ConsoleSystem.Arg arg)
+        [ConsoleCommand("sc.deposit")]
+        private void CmdDeposit(ConsoleSystem.Arg arg)
         {
             var player = arg.Connection.player as BasePlayer;
             if (player == null || arg.Args.Length != 1 || 
@@ -434,8 +431,8 @@ namespace Oxide.Plugins
             CreateUi(player);
         }
 
-        [ConsoleCommand("withdraw")]
-        private void Cmd_withdraw(ConsoleSystem.Arg arg)
+        [ConsoleCommand("sc.withdraw")]
+        private void CmdWithdraw(ConsoleSystem.Arg arg)
         {
             var player = arg.Connection.player as BasePlayer;
             if (player == null || arg.Args.Length != 1 || 
