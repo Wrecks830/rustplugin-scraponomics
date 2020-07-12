@@ -1,6 +1,6 @@
 Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors where players may deposit or withdraw their precious scrap for a small fee.
 
-Players receive are rewarded interest daily.
+Players are rewarded interest daily.
 
 * UI adjusts properly to any resolution
 * Option to restrict ATM access from player placed vending machines
