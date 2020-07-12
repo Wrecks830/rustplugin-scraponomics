@@ -8,12 +8,14 @@ Players receive are rewarded interest daily.
 * Set fees, starting balance and interest rate
 
 ## Usage
+
 The UI will appear when using Vending Machine or Bandit Vendor:
 ![](https://i.imgur.com/HtCAotG.png)
 
 An interest rate of 0.10 or 10% means 50 scrap in the bank will reward 5 scrap after 1 day.
 
 ## Configuration
+
 ```json
 {
   "feesFraction": 0.05,
@@ -24,8 +26,8 @@ An interest rate of 0.10 or 10% means 50 scrap in the bank will reward 5 scrap a
 }
 ```
 
-
 ## Localization
+
 ```json
 {
   "PaidBrokerage": "Paid the brokerage fee of {0} scrap.",
@@ -38,8 +40,8 @@ An interest rate of 0.10 or 10% means 50 scrap in the bank will reward 5 scrap a
 }
 ```
 
-
 ## Developer API
+
 ```csharp
 private object SetBalance(ulong userId, int balance);  // returns true if successful, else null
 private object GetBalance(ulong userId);  // returns int if successful, else null
