@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart", "0.4.5")]
+    [Info("Scraponomics Lite", "haggbart", "1.0.0")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
@@ -177,7 +177,7 @@ namespace Oxide.Plugins
             SaveData();
         }
 
-        private void OnOpenVendingShop(VendingMachine machine, BasePlayer player)
+        private void OnVendingShopOpened(VendingMachine machine, BasePlayer player)
         {
             if (!(machine is NPCVendingMachine) && !config.allowPlayerVendingMachines) return;
             
