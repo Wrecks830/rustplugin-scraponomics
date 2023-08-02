@@ -8,7 +8,7 @@ using Oxide.Core.Libraries.Covalence;
 //1.0.1 Adds Scrap Leaderboard on interval that lists top 5 balances. 
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart","Wrecks" "1.0.1")]
+    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.0.1")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
