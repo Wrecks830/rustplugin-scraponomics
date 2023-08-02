@@ -1,25 +1,27 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Oxide.Core;
 using Oxide.Game.Rust.Cui;
 using UnityEngine;
-
-
+using Oxide.Core.Libraries.Covalence;
+//1.0.1 Adds Scrap Leaderboard on interval that lists top 5 balances. 
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart", "1.0.0")]
+    [Info("Scraponomics Lite", "haggbart","Wrecks" "1.0.1")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
         #region localization
-        
+
         private const string LOC_PAID_BROKERAGE = "PaidBrokerage";
         private const string LOC_DEPOSIT = "Deposit";
         private const string LOC_WITHDRAW = "Withdraw";
         private const string LOC_AMOUNT = "Amount";
         private const string LOC_BALANCE = "Balance";
         private const string LOC_ATM = "ATM";
-        private const string LOC_REWARD_INTEREST = "RewardInterst";
+        private const string LOC_REWARD_INTEREST = "RewardInterest";
+        private string announce = "assets/prefabs/deployable/vendingmachine/effects/vending-machine-purchase-human.prefab";
 
         protected override void LoadDefaultMessages()
         {
@@ -36,9 +38,9 @@ namespace Oxide.Plugins
         }
 
         #endregion localization
-        
 
         #region data
+
         private void SaveData() =>
             Interface.Oxide.DataFileSystem.WriteObject(Name, playerData);
 
@@ -53,16 +55,16 @@ namespace Oxide.Plugins
             public int scrap { get; set; }
             public DateTime lastInterest = DateTime.UtcNow;
         }
-        
+
         private class PlayerPreference
-        { 
+        {
             public int amount { get; set; }
         }
-        
+
         #endregion data
 
         #region config
-        
+
         private PluginConfig config;
 
         private class PluginConfig
@@ -73,10 +75,10 @@ namespace Oxide.Plugins
             public bool resetOnMapWipe;
             public float interestRate;
         }
-        
+
         protected override void LoadDefaultConfig() => Config.WriteObject(GetDefaultConfig(), true);
         private new void SaveConfig() => Config.WriteObject(config, true);
-        
+
         private static PluginConfig GetDefaultConfig()
         {
             return new PluginConfig
@@ -88,15 +90,15 @@ namespace Oxide.Plugins
                 interestRate = 0.10f
             };
         }
-        
-        
+
         #endregion config
-        
+
         #region init
 
         private void Init()
         {
             config = Config.ReadObject<PluginConfig>();
+            AddCovalenceCommand("scrapannounce", "CmdScrapAnnounce");
 
             if (!config.resetOnMapWipe)
             {
@@ -115,7 +117,7 @@ namespace Oxide.Plugins
             };
             playerData.Add(player.userID, playerbalances);
         }
-        
+
         private static void InitPlayerPerference(BasePlayer player)
         {
             var playerPreference = new PlayerPreference
@@ -131,41 +133,40 @@ namespace Oxide.Plugins
             {
                 DestroyGuiAll(player);
             }
-            
+
             SaveData();
         }
-        
+
         #endregion init
-        
-        
+
         #region methods
-        
+
         private void DoInterest(BasePlayer player)
         {
             PlayerData data = playerData[player.userID];
 
             if (data.scrap < 1) return;
-            
+
             TimeSpan timeSinceLastInterest = DateTime.UtcNow - data.lastInterest;
             if (timeSinceLastInterest.Days == 0)
             {
                 return;
             }
-            
-            int interest = (int) (data.scrap * Math.Pow(config.interestRate + 1.0f, 
+
+            int interest = (int)(data.scrap * Math.Pow(config.interestRate + 1.0f,
                 timeSinceLastInterest.TotalSeconds / 86400.0)) - data.scrap;
-            
+
             if (interest < 1) return;
             data.scrap += interest;
             data.lastInterest = DateTime.UtcNow;
 
             SendReply(player, lang.GetMessage(LOC_REWARD_INTEREST, this, player.UserIDString), interest);
         }
-        
+
         #endregion methods
 
         #region hooks
-        
+
         private void OnServerSave()
         {
             SaveData();
@@ -180,17 +181,17 @@ namespace Oxide.Plugins
         private void OnVendingShopOpened(VendingMachine machine, BasePlayer player)
         {
             if (!(machine is NPCVendingMachine) && !config.allowPlayerVendingMachines) return;
-            
+
             if (!playerData.ContainsKey(player.userID))
             {
                 InitPlayerData(player);
             }
-            
+
             DoInterest(player);
 
-            NextTick(() => CreateUi(player)); 
+            NextTick(() => CreateUi(player));
         }
-        
+
         private void OnLootEntityEnd(BasePlayer player, VendingMachine machine)
         {
             DestroyGuiAll(player);
@@ -200,11 +201,11 @@ namespace Oxide.Plugins
         {
             CuiHelper.DestroyUi(player, CUI_BANK_NAME);
         }
-        
+
         #endregion hooks
 
         #region bank CUI
-        
+
         private const int CUI_MAIN_FONTSIZE = 10;
         private const string CUI_MAIN_FONT_COLOR = "0.7 0.7 0.7 1.0";
         private const string CUI_GREEN_BUTTON_COLOR = "0.415 0.5 0.258 0.4";
@@ -214,30 +215,28 @@ namespace Oxide.Plugins
         private const string CUI_BANK_NAME = "BankUI";
         private const string CUI_BANK_HEADER_NAME = "header";
         private const string CUI_BANK_CONTENT_NAME = "content";
-        
+
         private const string ANCHOR_MIN = "0.5 0.0";
         private const string ANCHOR_MAX = "0.67 0.0";
         private const string OFFSET_MIN = "193 16";
         private const string OFFSET_MAX = "200 97";
 
-        private void CreateUi(BasePlayer player) 
+        private void CreateUi(BasePlayer player)
         {
             if (!player.inventory.loot.IsLooting()) return;
-            
-            
+
             if (!playerPrefs.ContainsKey(player.userID))
             {
                 InitPlayerPerference(player);
             }
 
             int amount = playerPrefs[player.userID].amount;
-            
 
             double nextDecrement = amount / 1.5;
             double nextIncrement = amount * 1.5;
-            
+
             CuiHelper.DestroyUi(player, CUI_BANK_NAME);
-            
+
             var bankCui = new CuiElementContainer
             {
                 {
@@ -265,7 +264,7 @@ namespace Oxide.Plugins
                     {
                         RectTransform = {AnchorMin = "0.051 0", AnchorMax = "1 0.95"},
                         Text = {Text = lang.GetMessage(
-                            LOC_ATM, this, player.UserIDString), 
+                            LOC_ATM, this, player.UserIDString),
                             Align = TextAnchor.MiddleLeft, Color = "0.77 0.7 0.7 1", FontSize = 13}
                     },
                     CUI_BANK_HEADER_NAME
@@ -284,7 +283,7 @@ namespace Oxide.Plugins
                         RectTransform = {AnchorMin = "0.02 0.7", AnchorMax = "0.98 1"},
                         Text =
                         {
-                            Text = string.Format(lang.GetMessage(LOC_BALANCE, this, 
+                            Text = string.Format(lang.GetMessage(LOC_BALANCE, this,
                                 player.UserIDString), playerData[player.userID].scrap),
                             Align = TextAnchor.MiddleLeft,
                             Color = CUI_MAIN_FONT_COLOR,
@@ -385,24 +384,24 @@ namespace Oxide.Plugins
         private void CmdSetAmount(ConsoleSystem.Arg arg)
         {
             var player = arg.Connection.player as BasePlayer;
-            if (player == null || arg.Args.Length != 1 || 
+            if (player == null || arg.Args.Length != 1 ||
                 !(player.inventory.loot.entitySource is VendingMachine)) return;
-            
+
             double amount;
             if (!double.TryParse(arg.Args[0], out amount)) return;
-            
+
             amount = Math.Round(amount / 10) * 10;
-            
+
             if (amount < 10) amount = 10;
             else if (amount > 1000) amount = 1000;
 
             if (arg.Args.Length != 1) return;
-            
+
             if (!playerPrefs.ContainsKey(player.userID))
             {
                 InitPlayerPerference(player);
             }
-            playerPrefs[player.userID].amount = (short) amount;
+            playerPrefs[player.userID].amount = (short)amount;
             CreateUi(player);
         }
 
@@ -410,18 +409,18 @@ namespace Oxide.Plugins
         private void CmdDeposit(ConsoleSystem.Arg arg)
         {
             var player = arg.Connection.player as BasePlayer;
-            if (player == null || arg.Args.Length != 1 || 
+            if (player == null || arg.Args.Length != 1 ||
                 !(player.inventory.loot.entitySource is VendingMachine)) return;
-            
+
             int amount;
             if (!int.TryParse(arg.Args[0], out amount)) return;
-            
+
             if (player.inventory.GetAmount(-932201673) < amount)
             {
                 amount = player.inventory.GetAmount(-932201673);
             }
             if (amount == 0) return;
-            
+
             if (!playerData.ContainsKey(player.userID))
             {
                 InitPlayerData(player);
@@ -435,7 +434,7 @@ namespace Oxide.Plugins
         private void CmdWithdraw(ConsoleSystem.Arg arg)
         {
             var player = arg.Connection.player as BasePlayer;
-            if (player == null || arg.Args.Length != 1 || 
+            if (player == null || arg.Args.Length != 1 ||
                 !(player.inventory.loot.entitySource is VendingMachine)) return;
 
             int amount;
@@ -451,7 +450,7 @@ namespace Oxide.Plugins
 
             if (tax < 1) tax = 1;
             if (amount < 1) return;
-            
+
             playerData[player.userID].scrap -= amount + tax;
             CreateUi(player);
             Item item = ItemManager.CreateByItemID(-932201673, amount);
@@ -461,7 +460,68 @@ namespace Oxide.Plugins
                 lang.GetMessage(LOC_PAID_BROKERAGE, this, player.UserIDString), tax));
         }
         
+        // Command to announce at will.
+        [Command("scrapannounce")]
+        private void CmdScrapAnnounce(IPlayer player, string cmd, string[] args)
+        {
+            if (player.IsAdmin)
+            {
+                AnnounceTopBalances();
+            }
+            else
+            {
+                player.Reply("You don't have permission to use this command.");
+            }
+        }
+
+
+
         #endregion bank CUI
+
+        #region Announce Top Balances
+        
+        // Choose how many players to announce, and how often.
+        
+        private const int TOP_BALANCES_COUNT = 5;
+        private const int ANNOUNCE_INTERVAL_SECONDS = 720; 
+
+        private void OnServerInitialized()
+        {
+            timer.Every(ANNOUNCE_INTERVAL_SECONDS, AnnounceTopBalances);
+        }
+
+        private void AnnounceTopBalances()
+        {
+            var topBalances = playerData.OrderByDescending(kv => kv.Value.scrap)
+                .Take(TOP_BALANCES_COUNT)
+                .ToList();
+
+            if (topBalances.Count == 0)
+            {
+                return;
+            }
+
+            string message = "<size=16><color=#FF5733>Scrap Leaderboard</color></size>\n";
+            for (int i = 0; i < topBalances.Count; i++)
+            {
+                var kv = topBalances[i];
+                var playerData = kv.Value;
+                var playerID = kv.Key;
+                var playerName = covalence.Players.FindPlayerById(playerID.ToString())?.Name ?? playerID.ToString();
+                message += $"<color=#ff5733>{i + 1}.</color> <color=#ffbd33>{playerName}</color> with <color=#ff5733>{playerData.scrap}</color> scrap\n";
+            }
+
+            PrintToChat(message);
+            foreach (var player in BasePlayer.activePlayerList)
+            {
+                EffectNetwork.Send(new Effect(announce, player.transform.position, Vector3.zero));
+            }
+        }
+
+
+
+
+        #endregion Announce Top Balances
 
         #region API
 
@@ -486,7 +546,7 @@ namespace Oxide.Plugins
             InitPlayerData(player);
             return true;
         }
-        
+
         #endregion API
     }
 }
