@@ -6,12 +6,16 @@ Players are rewarded interest daily.
 * Option to restrict ATM access from player placed vending machines
 * Option to automatically reset data on map wipe
 * Set fees, starting balance and interest rate
-* Scrap Leaderboard announces 5 players at an interval of 12 minutes. 
+* Scrap Leaderboard announces 5 players at an interval of 12 minutes.
+* SFX on UI Usage.
+* Negative Balances are Prevented and warn players they cannot withdraw and why.
 
 ## Usage
 
 The UI will appear when using Vending Machine or Bandit Vendor:
-![](https://i.imgur.com/HtCAotG.png)
+
+
+![](https://media.discordapp.net/attachments/1131387423838961747/1136414047860949072/Screenshot_2023-08-02_163104.png)
 
 This "Announcement" will show up in chat and announce the Top 5 Balances.
 
@@ -31,8 +35,8 @@ An interest rate of 0.10 or 10% means 50 scrap in the bank will reward 5 scrap a
   "allowPlayerVendingMachines": false,
   "feesFraction": 0.05,
   "interestRate": 0.1,
-  "leaderboardAnnounceIntervalSeconds": 10,
-  "leaderboardAnnouncePlayerCount": 10,
+  "leaderboardAnnounceIntervalSeconds": 600,
+  "leaderboardAnnouncePlayerCount": 6,
   "resetOnMapWipe": false,
   "startingBalance": 50
 }
@@ -42,13 +46,14 @@ An interest rate of 0.10 or 10% means 50 scrap in the bank will reward 5 scrap a
 
 ```json
 {
-  "PaidBrokerage": "Paid the brokerage fee of {0} scrap.",
-  "Deposit": "Deposit",
-  "Withdraw": "Withdraw",
-  "Balance": "Balance: {0} scrap",
-  "Amount": "amount",
-  "ATM": "ATM",
-  "RewardInterst": "You've earned {0} scrap in interest."
+                [LOC_PAID_BROKERAGE] = "<color=#FF5733>[Scraponomics]</color> You paid the Brokerage fee of {0} Scrap.",
+                [LOC_DEPOSIT] = "Deposit",
+                [LOC_WITHDRAW] = "Withdraw",
+                [LOC_BALANCE] = "Balance : <color=#FF5733>{0}</color> Scrap",
+                [LOC_TOTAL] = "Total",
+                [LOC_ATM] = "SCRAP ATM",
+                [LOC_REWARD_INTEREST] = "<color=#FF5733>[Scraponomics]</color> You've earned {0} Scrap in interest.",
+                [LOC_INSUFFICIENT_FUNDS] = "<color=#FF5733>[Scraponomics]</color> Insufficient funds to cover Fees and Withdraw amount."
 }
 ```
 
