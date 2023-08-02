@@ -6,6 +6,7 @@ Players are rewarded interest daily.
 * Option to restrict ATM access from player placed vending machines
 * Option to automatically reset data on map wipe
 * Set fees, starting balance and interest rate
+* Scrap Leaderboard announces 5 players at an interval of 12 minutes. 
 
 ## Usage
 
@@ -13,8 +14,12 @@ The UI will appear when using Vending Machine or Bandit Vendor:
 ![](https://i.imgur.com/HtCAotG.png)
 
 An interest rate of 0.10 or 10% means 50 scrap in the bank will reward 5 scrap after 1 day.
+## Commands
+
+/ScrapAnnounce - Will announce leaderboard at will.
 
 ## Configuration
+
 
 ```json
 {
@@ -50,3 +55,5 @@ private object GetBalance(ulong userId);  // returns int if successful, else nul
 ## Credits
 
 CUI inspired by **Skipcast**'s Furnace Splitter plugin
+
+Thanks to https://github.com/haggbart For giving me permission to add the leaderboard feature! - Wrecks
