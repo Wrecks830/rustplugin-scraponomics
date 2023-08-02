@@ -28,11 +28,13 @@ An interest rate of 0.10 or 10% means 50 scrap in the bank will reward 5 scrap a
 
 ```json
 {
-  "feesFraction": 0.05,
-  "startingBalance": 50,
   "allowPlayerVendingMachines": false,
-  "resetOnMapWipe": true,
-  "interestRate": 0.1
+  "feesFraction": 0.05,
+  "interestRate": 0.1,
+  "leaderboardAnnounceIntervalSeconds": 10,
+  "leaderboardAnnouncePlayerCount": 10,
+  "resetOnMapWipe": false,
+  "startingBalance": 50
 }
 ```
 
