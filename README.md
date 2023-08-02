@@ -13,6 +13,9 @@ Players are rewarded interest daily.
 The UI will appear when using Vending Machine or Bandit Vendor:
 ![](https://i.imgur.com/HtCAotG.png)
 
+This will pop up in chat and announce the Top 5 Balances.
+![]([https://i.imgur.com/HtCAotG.png](https://cdn.discordapp.com/attachments/1136078788279677009/1136081650028138616/image.png))
+
 An interest rate of 0.10 or 10% means 50 scrap in the bank will reward 5 scrap after 1 day.
 ## Commands
 
