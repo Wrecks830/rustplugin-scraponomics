@@ -6,9 +6,10 @@ using Oxide.Game.Rust.Cui;
 using UnityEngine;
 using Oxide.Core.Libraries.Covalence;
 //1.0.1 Adds Scrap Leaderboard on interval that lists top 5 balances. 
+//1.0.2 Added Config options for announcement interval adjustment and number of players to announce.
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.0.1")]
+    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.0.2")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
@@ -74,10 +75,32 @@ namespace Oxide.Plugins
             public bool allowPlayerVendingMachines;
             public bool resetOnMapWipe;
             public float interestRate;
+            public int leaderboardAnnounceIntervalSeconds;
+            public int leaderboardAnnouncePlayerCount;
         }
 
-        protected override void LoadDefaultConfig() => Config.WriteObject(GetDefaultConfig(), true);
-        private new void SaveConfig() => Config.WriteObject(config, true);
+        protected override void LoadDefaultConfig()
+        {
+            config = GetDefaultConfig();
+
+            if (Config.Get("feesFraction") == null)
+                Config.Set("feesFraction", config.feesFraction);
+            if (Config.Get("startingBalance") == null)
+                Config.Set("startingBalance", config.startingBalance);
+            if (Config.Get("allowPlayerVendingMachines") == null)
+                Config.Set("allowPlayerVendingMachines", config.allowPlayerVendingMachines);
+            if (Config.Get("resetOnMapWipe") == null)
+                Config.Set("resetOnMapWipe", config.resetOnMapWipe);
+            if (Config.Get("interestRate") == null)
+                Config.Set("interestRate", config.interestRate);
+            if (Config.Get("leaderboardAnnounceIntervalSeconds") == null)
+                Config.Set("leaderboardAnnounceIntervalSeconds", config.leaderboardAnnounceIntervalSeconds);
+            if (Config.Get("leaderboardAnnouncePlayerCount") == null)
+                Config.Set("leaderboardAnnouncePlayerCount", config.leaderboardAnnouncePlayerCount);
+
+            SaveConfig();
+        }
+
 
         private static PluginConfig GetDefaultConfig()
         {
@@ -87,7 +110,9 @@ namespace Oxide.Plugins
                 startingBalance = 50,
                 allowPlayerVendingMachines = false,
                 resetOnMapWipe = true,
-                interestRate = 0.10f
+                interestRate = 0.10f,
+                leaderboardAnnounceIntervalSeconds = 720,
+                leaderboardAnnouncePlayerCount = 5
             };
         }
 
@@ -459,7 +484,7 @@ namespace Oxide.Plugins
             SendReply(player, string.Format(
                 lang.GetMessage(LOC_PAID_BROKERAGE, this, player.UserIDString), tax));
         }
-        
+
         // Command to announce at will.
         [Command("scrapannounce")]
         private void CmdScrapAnnounce(IPlayer player, string cmd, string[] args)
@@ -474,26 +499,19 @@ namespace Oxide.Plugins
             }
         }
 
-
-
         #endregion bank CUI
 
         #region Announce Top Balances
-        
-        // Choose how many players to announce, and how often.
-        
-        private const int TOP_BALANCES_COUNT = 5;
-        private const int ANNOUNCE_INTERVAL_SECONDS = 720; 
 
         private void OnServerInitialized()
         {
-            timer.Every(ANNOUNCE_INTERVAL_SECONDS, AnnounceTopBalances);
+            timer.Every(config.leaderboardAnnounceIntervalSeconds, AnnounceTopBalances);
         }
 
         private void AnnounceTopBalances()
         {
             var topBalances = playerData.OrderByDescending(kv => kv.Value.scrap)
-                .Take(TOP_BALANCES_COUNT)
+                .Take(config.leaderboardAnnouncePlayerCount)
                 .ToList();
 
             if (topBalances.Count == 0)
@@ -517,9 +535,6 @@ namespace Oxide.Plugins
                 EffectNetwork.Send(new Effect(announce, player.transform.position, Vector3.zero));
             }
         }
-
-
-
 
         #endregion Announce Top Balances
 
