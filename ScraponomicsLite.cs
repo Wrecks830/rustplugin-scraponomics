@@ -5,13 +5,15 @@ using Oxide.Core;
 using Oxide.Game.Rust.Cui;
 using UnityEngine;
 using Oxide.Core.Libraries.Covalence;
+
 //1.0.1 Adds Scrap Leaderboard on interval that lists top 5 balances. 
 //1.0.2 Added Config options for announcement interval adjustment and number of players to announce.
 //1.1.0 Added SFX on ui press. Removed negative balance possibility, with an announcement (cont. below)
 //1.1.0 cont. That the player cant afford the fee. Added color and Scraponomics tag. & centered ui, added coloring.
+//1.1.1 Changed SFX from register fx to scrap slot machine fx. Changed some coloring.
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.1.0")]
+    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.1.1")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
@@ -25,13 +27,16 @@ namespace Oxide.Plugins
         private const string LOC_ATM = "SCRAP ATM";
         private const string LOC_REWARD_INTEREST = "RewardInterest";
         private const string LOC_INSUFFICIENT_FUNDS = "InsufficientFunds";
-        private string announce = "assets/prefabs/deployable/vendingmachine/effects/vending-machine-purchase-human.prefab";
+        private string announce = "assets/prefabs/misc/casino/slotmachine/effects/payout.prefab";
         private string increment = "assets/prefabs/tools/detonator/effects/unpress.prefab";
         private string deposit = "assets/prefabs/deployable/dropbox/effects/submit_items.prefab";
-        private string withdraw = "assets/prefabs/deployable/vendingmachine/effects/vending-machine-purchase-human.prefab";
+
+        private string withdraw =
+            "assets/prefabs/deployable/vendingmachine/effects/vending-machine-purchase-human.prefab";
+
         private string insufficientfunds = "assets/prefabs/locks/keypad/effects/lock.code.denied.prefab";
-        
-        
+
+
         protected override void LoadDefaultMessages()
         {
             lang.RegisterMessages(new Dictionary<string, string>
@@ -43,7 +48,8 @@ namespace Oxide.Plugins
                 [LOC_TOTAL] = "Total",
                 [LOC_ATM] = "SCRAP ATM",
                 [LOC_REWARD_INTEREST] = "<color=#FF5733>[Scraponomics]</color> You've earned {0} Scrap in interest.",
-                [LOC_INSUFFICIENT_FUNDS] = "<color=#FF5733>[Scraponomics]</color> Insufficient funds to cover Fees and Withdraw amount."
+                [LOC_INSUFFICIENT_FUNDS] =
+                    "<color=#FF5733>[Scraponomics]</color> Insufficient funds to cover Fees and Withdraw amount."
             }, this);
         }
 
@@ -58,7 +64,9 @@ namespace Oxide.Plugins
             playerData = Interface.Oxide.DataFileSystem.ReadObject<Dictionary<ulong, PlayerData>>(Name);
 
         private static Dictionary<ulong, PlayerData> playerData;
-        private static readonly Dictionary<ulong, PlayerPreference> playerPrefs = new Dictionary<ulong, PlayerPreference>();
+
+        private static readonly Dictionary<ulong, PlayerPreference> playerPrefs =
+            new Dictionary<ulong, PlayerPreference>();
 
         private class PlayerData
         {
@@ -276,7 +284,7 @@ namespace Oxide.Plugins
                 {
                     new CuiPanel // main panel
                     {
-                        Image = new CuiImageComponent {Color = "0 0 0 0"},
+                        Image = new CuiImageComponent { Color = "0 0 0 0" },
                         RectTransform =
                         {
                             AnchorMin = ANCHOR_MIN, AnchorMax = ANCHOR_MAX,
@@ -288,33 +296,36 @@ namespace Oxide.Plugins
                 {
                     new CuiPanel // header
                     {
-                        Image = new CuiImageComponent {Color = "0.75 0.75 0.75 0.35"},
-                        RectTransform = {AnchorMin = "0 0.775", AnchorMax = "1 1"}
+                        Image = new CuiImageComponent { Color = "0.75 0.75 0.75 0.35" },
+                        RectTransform = { AnchorMin = "0 0.775", AnchorMax = "1 1" }
                     },
                     CUI_BANK_NAME, CUI_BANK_HEADER_NAME
                 },
                 {
                     new CuiLabel // header label
                     {
-                        RectTransform = {AnchorMin = "0.051 0", AnchorMax = "1 0.95"},
-                        Text = {Text = lang.GetMessage(
-                            LOC_ATM, this, player.UserIDString),
-                            Align = TextAnchor.MiddleCenter, Color = "1.000 0.341 0.200", FontSize = 13}
+                        RectTransform = { AnchorMin = "0.051 0", AnchorMax = "1 0.95" },
+                        Text =
+                        {
+                            Text = lang.GetMessage(
+                                LOC_ATM, this, player.UserIDString),
+                            Align = TextAnchor.MiddleCenter, Color = "1.000 0.341 0.200", FontSize = 13
+                        }
                     },
                     CUI_BANK_HEADER_NAME
                 },
                 {
                     new CuiPanel // content panel
                     {
-                        Image = new CuiImageComponent {Color = "0.65 0.65 0.65 0.25"},
-                        RectTransform = {AnchorMin = "0 0", AnchorMax = "1 0.74"}
+                        Image = new CuiImageComponent { Color = "0.65 0.65 0.65 0.25" },
+                        RectTransform = { AnchorMin = "0 0", AnchorMax = "1 0.74" }
                     },
                     CUI_BANK_NAME, CUI_BANK_CONTENT_NAME
                 },
                 {
                     new CuiLabel // balance label
                     {
-                        RectTransform = {AnchorMin = "0.02 0.7", AnchorMax = "0.98 1"},
+                        RectTransform = { AnchorMin = "0.02 0.7", AnchorMax = "0.98 1" },
                         Text =
                         {
                             Text = string.Format(lang.GetMessage(LOC_BALANCE, this,
@@ -329,8 +340,8 @@ namespace Oxide.Plugins
                 {
                     new CuiButton // deposit button
                     {
-                        RectTransform = {AnchorMin = "0.28 0.4", AnchorMax = "0.48 0.7"},
-                        Button = {Command = "sc.deposit " + amount, Color = CUI_GREEN_BUTTON_COLOR},
+                        RectTransform = { AnchorMin = "0.28 0.4", AnchorMax = "0.48 0.7" },
+                        Button = { Command = "sc.deposit " + amount, Color = CUI_GREEN_BUTTON_COLOR },
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
@@ -344,18 +355,22 @@ namespace Oxide.Plugins
                 {
                     new CuiButton // withdraw button
                     {
-                        RectTransform = {AnchorMin = "0.49 0.4", AnchorMax = "0.73 0.7"},
-                        Button = {Command = "sc.withdraw " + amount, Color = CUI_GRAY_BUTTON_COLOR},
-                        Text = {Align = TextAnchor.MiddleCenter, Text = lang.GetMessage(
-                            LOC_WITHDRAW, this, player.UserIDString), Color = CUI_MAIN_FONT_COLOR, FontSize = 11}
+                        RectTransform = { AnchorMin = "0.49 0.4", AnchorMax = "0.73 0.7" },
+                        Button = { Command = "sc.withdraw " + amount, Color = CUI_GRAY_BUTTON_COLOR },
+                        Text =
+                        {
+                            Align = TextAnchor.MiddleCenter, Text = lang.GetMessage(
+                                LOC_WITHDRAW, this, player.UserIDString),
+                            Color = CUI_MAIN_FONT_COLOR, FontSize = 11
+                        }
                     },
                     CUI_BANK_CONTENT_NAME
                 },
                 {
                     new CuiButton // decrement button
                     {
-                        RectTransform = {AnchorMin = "0.35 0.05", AnchorMax = "0.40 0.35"},
-                        Button = {Command = "sc.setamount " + nextDecrement, Color = CUI_GRAY_BUTTON_COLOR},
+                        RectTransform = { AnchorMin = "0.35 0.05", AnchorMax = "0.40 0.35" },
+                        Button = { Command = "sc.setamount " + nextDecrement, Color = CUI_GRAY_BUTTON_COLOR },
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
@@ -369,7 +384,7 @@ namespace Oxide.Plugins
                 {
                     new CuiLabel // amount label
                     {
-                        RectTransform = {AnchorMin = "0.42 0.05", AnchorMax = "0.53 0.35"},
+                        RectTransform = { AnchorMin = "0.42 0.05", AnchorMax = "0.53 0.35" },
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
@@ -383,8 +398,8 @@ namespace Oxide.Plugins
                 {
                     new CuiButton // increment button
                     {
-                        RectTransform = {AnchorMin = "0.57 0.05", AnchorMax = "0.62 0.35"},
-                        Button = {Command = "sc.setamount " + nextIncrement, Color = CUI_GRAY_BUTTON_COLOR},
+                        RectTransform = { AnchorMin = "0.57 0.05", AnchorMax = "0.62 0.35" },
+                        Button = { Command = "sc.setamount " + nextIncrement, Color = CUI_GRAY_BUTTON_COLOR },
                         Text =
                         {
                             Align = TextAnchor.MiddleCenter,
@@ -398,7 +413,7 @@ namespace Oxide.Plugins
                 {
                     new CuiLabel // amount text label
                     {
-                        RectTransform = {AnchorMin = "0.65 0.05", AnchorMax = "0.75 0.35"},
+                        RectTransform = { AnchorMin = "0.65 0.05", AnchorMax = "0.75 0.35" },
                         Text =
                         {
                             Align = TextAnchor.MiddleLeft,
@@ -409,8 +424,6 @@ namespace Oxide.Plugins
                     },
                     CUI_BANK_CONTENT_NAME
                 }
-
-
             };
 
             CuiHelper.AddUi(player, bankCui);
@@ -437,18 +450,18 @@ namespace Oxide.Plugins
             {
                 InitPlayerPerference(player);
             }
+
             playerPrefs[player.userID].amount = (short)amount;
             CreateUi(player);
 
             // sfx on ui interaction
             TriggerIncrementEffect(player);
         }
-        
+
         private void TriggerIncrementEffect(BasePlayer player)
         {
             EffectNetwork.Send(new Effect(increment, player.transform.position, Vector3.zero), player.net.connection);
         }
-
 
 
         [ConsoleCommand("sc.deposit")]
@@ -465,21 +478,22 @@ namespace Oxide.Plugins
             {
                 amount = player.inventory.GetAmount(-932201673);
             }
+
             if (amount == 0) return;
 
             if (!playerData.ContainsKey(player.userID))
             {
                 InitPlayerData(player);
             }
+
             playerData[player.userID].scrap += amount;
             player.inventory.Take(null, -932201673, amount);
             CreateUi(player);
-            
+
             // sfx on ui deposit interaction
             TriggerDepositEffect(player);
-            
         }
-        
+
         private void TriggerDepositEffect(BasePlayer player)
         {
             EffectNetwork.Send(new Effect(deposit, player.transform.position, Vector3.zero), player.net.connection);
@@ -499,14 +513,14 @@ namespace Oxide.Plugins
             {
                 InitPlayerData(player);
             }
-    
+
             int balance = playerData[player.userID].scrap;
             int tax = (int)Math.Round(amount * config.feesFraction);
 
             if (balance < amount + tax)
             {
                 SendReply(player, string.Format(
-                    lang.GetMessage(LOC_INSUFFICIENT_FUNDS, this, player.UserIDString)));    
+                    lang.GetMessage(LOC_INSUFFICIENT_FUNDS, this, player.UserIDString)));
                 TriggerInsufficientFundsEffect(player);
                 return;
             }
@@ -518,23 +532,23 @@ namespace Oxide.Plugins
             player.inventory.GiveItem(item);
             SendReply(player, string.Format(
                 lang.GetMessage(LOC_PAID_BROKERAGE, this, player.UserIDString), tax));
-    
+
             // sfx on ui withdraw interaction
             TriggerWithdrawEffect(player);
         }
 
-        
+
         private void TriggerWithdrawEffect(BasePlayer player)
         {
             EffectNetwork.Send(new Effect(withdraw, player.transform.position, Vector3.zero), player.net.connection);
         }
-        
+
         private void TriggerInsufficientFundsEffect(BasePlayer player)
         {
-            EffectNetwork.Send(new Effect(insufficientfunds, player.transform.position, Vector3.zero), player.net.connection);
+            EffectNetwork.Send(new Effect(insufficientfunds, player.transform.position, Vector3.zero),
+                player.net.connection);
         }
-        
-        
+
 
         // Command to announce at will.
         [Command("scrapannounce")]
@@ -577,7 +591,8 @@ namespace Oxide.Plugins
                 var playerData = kv.Value;
                 var playerID = kv.Key;
                 var playerName = covalence.Players.FindPlayerById(playerID.ToString())?.Name ?? playerID.ToString();
-                message += $"<color=#ff5733>{i + 1}.</color> <color=#ffbd33>{playerName}</color> with <color=#ff5733>{playerData.scrap}</color> Scrap.\n";
+                message +=
+                    $"<color=#ff3375>{i + 1}.</color> <color=#ffbd33>{playerName}</color> with <color=#ff5733>{playerData.scrap}</color> Scrap.\n";
             }
 
             PrintToChat(message);
