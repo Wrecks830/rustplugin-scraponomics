@@ -11,9 +11,10 @@ using Oxide.Core.Libraries.Covalence;
 //1.1.0 Added SFX on ui press. Removed negative balance possibility, with an announcement (cont. below)
 //1.1.0 cont. That the player cant afford the fee. Added color and Scraponomics tag. & centered ui, added coloring.
 //1.1.1 Changed SFX from register fx to scrap slot machine fx. Changed some coloring.
+//1.1.2 Added checks for 0 Balances to be skipped on announcement.
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.1.1")]
+    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.1.2")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
@@ -579,7 +580,7 @@ namespace Oxide.Plugins
                 .Take(config.leaderboardAnnouncePlayerCount)
                 .ToList();
 
-            if (topBalances.Count == 0)
+            if (topBalances.Count == 0 || topBalances.All(kv => kv.Value.scrap == 0))
             {
                 return;
             }
@@ -591,8 +592,11 @@ namespace Oxide.Plugins
                 var playerData = kv.Value;
                 var playerID = kv.Key;
                 var playerName = covalence.Players.FindPlayerById(playerID.ToString())?.Name ?? playerID.ToString();
-                message +=
-                    $"<color=#ff3375>{i + 1}.</color> <color=#ffbd33>{playerName}</color> with <color=#ff5733>{playerData.scrap}</color> Scrap.\n";
+                if (playerData.scrap > 0)
+                {
+                    message +=
+                        $"<color=#ff3375>{i + 1}.</color> <color=#ffbd33>{playerName}</color> with <color=#ff5733>{playerData.scrap}</color> Scrap.\n";
+                }
             }
 
             PrintToChat(message);
