@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Oxide.Core;
+using Oxide.Core.Libraries;
 using Oxide.Game.Rust.Cui;
 using UnityEngine;
 using Oxide.Core.Libraries.Covalence;
@@ -12,9 +14,10 @@ using Oxide.Core.Libraries.Covalence;
 //1.1.0 cont. That the player cant afford the fee. Added color and Scraponomics tag. & centered ui, added coloring.
 //1.1.1 Changed SFX from register fx to scrap slot machine fx. Changed some coloring.
 //1.1.2 Added checks for 0 Balances to be skipped on announcement.
+//1.1.3 Added Discord Logging for top balances on announce.
 namespace Oxide.Plugins
 {
-    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.1.2")]
+    [Info("Scraponomics Lite", "haggbart, Wrecks", "1.1.3")]
     [Description("Adds ATM UI with simple, intuitive functionality to vending machines and bandit vendors")]
     internal class ScraponomicsLite : RustPlugin
     {
@@ -95,6 +98,7 @@ namespace Oxide.Plugins
             public float interestRate;
             public int leaderboardAnnounceIntervalSeconds;
             public int leaderboardAnnouncePlayerCount;
+            public string discordwebhookURL;
         }
 
         protected override void LoadDefaultConfig()
@@ -115,6 +119,8 @@ namespace Oxide.Plugins
                 Config.Set("leaderboardAnnounceIntervalSeconds", config.leaderboardAnnounceIntervalSeconds);
             if (Config.Get("leaderboardAnnouncePlayerCount") == null)
                 Config.Set("leaderboardAnnouncePlayerCount", config.leaderboardAnnouncePlayerCount);
+            if (Config.Get("discordwebhookURL") == null)
+                Config.Set("discordwebhookURL", config.discordwebhookURL);
 
             SaveConfig();
         }
@@ -604,9 +610,85 @@ namespace Oxide.Plugins
             {
                 EffectNetwork.Send(new Effect(announce, player.transform.position, Vector3.zero));
             }
+
+            
+            var topBalancesStringKeys = topBalances
+                .Select(kv => new KeyValuePair<string, PlayerData>(kv.Key.ToString(), kv.Value)).ToList();
+
+           
+            SendDiscordTopBalances(topBalancesStringKeys);
         }
 
         #endregion Announce Top Balances
+
+        #region Discord
+
+        private void SendDiscordTopBalances(List<KeyValuePair<string, PlayerData>> topBalances)
+        {
+            string webhookUrl = Convert.ToString(config.discordwebhookURL);
+
+            if (topBalances == null || topBalances.Count == 0 || string.IsNullOrEmpty(webhookUrl) ||
+                !webhookUrl.Contains("/api/webhooks"))
+            {
+                Puts("Failed to send Discord Message. Webhook URL or content is invalid.");
+                return;
+            }
+
+            StringBuilder contentBuilder = new StringBuilder();
+            contentBuilder.AppendLine(DiscordJson); 
+
+            
+            int maxBalancesToShow = Math.Min(topBalances.Count, 5);
+            for (int i = 0; i < maxBalancesToShow; i++)
+            {
+                var kv = topBalances[i];
+                var playerData = kv.Value;
+                var playerID = kv.Key;
+                var playerName = covalence.Players.FindPlayerById(playerID.ToString())?.Name ?? playerID.ToString();
+
+               
+                contentBuilder.Replace("${message.field.name}", $"#{i + 1} {playerName}");
+                contentBuilder.Replace("${message}", $"Balance: {playerData.scrap} Scrap");
+            }
+
+            string content = contentBuilder.ToString();
+
+            
+            Puts($"Constructed JSON: {content}");
+
+            if (string.IsNullOrEmpty(content))
+            {
+                Puts("Constructed JSON is empty. Check topBalances and message variables.");
+                return;
+            }
+
+          
+            webrequest.Enqueue(webhookUrl, content, (code, response) =>
+            {
+                if (code != 204)
+                {
+                    Puts($"Discord responded with code {code}. Response: {response}");
+                }
+                else
+                {
+                    Puts("Discord message sent successfully.");
+                }
+            }, this, RequestMethod.POST, new Dictionary<string, string> { ["Content-Type"] = "application/json" });
+        }
+
+
+        private const string DiscordJson = @"{
+    ""embeds"":[{
+        ""fields"": [
+            {
+                ""name"": ""${message.field.name}"",
+                ""value"": ""${message}""
+            }
+        ]
+    }]
+}";
+
+        #endregion
 
         #region API
 
