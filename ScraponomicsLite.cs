@@ -7,6 +7,7 @@ using Oxide.Core.Libraries;
 using Oxide.Game.Rust.Cui;
 using UnityEngine;
 using Oxide.Core.Libraries.Covalence;
+using Newtonsoft.Json;
 
 //1.0.1 Adds Scrap Leaderboard on interval that lists top 5 balances. 
 //1.0.2 Added Config options for announcement interval adjustment and number of players to announce.
@@ -57,7 +58,7 @@ namespace Oxide.Plugins
             }, this);
         }
 
-        #endregion localization
+        #endregion localization 
 
         #region data
 
@@ -611,11 +612,11 @@ namespace Oxide.Plugins
                 EffectNetwork.Send(new Effect(announce, player.transform.position, Vector3.zero));
             }
 
-            
+
             var topBalancesStringKeys = topBalances
                 .Select(kv => new KeyValuePair<string, PlayerData>(kv.Key.ToString(), kv.Value)).ToList();
 
-           
+
             SendDiscordTopBalances(topBalancesStringKeys);
         }
 
@@ -634,44 +635,41 @@ namespace Oxide.Plugins
                 return;
             }
 
-            StringBuilder contentBuilder = new StringBuilder();
-            contentBuilder.AppendLine(DiscordJson); 
 
-            
-            int maxBalancesToShow = Math.Min(topBalances.Count, 5);
-            for (int i = 0; i < maxBalancesToShow; i++)
+            var discordMessage = new
             {
-                var kv = topBalances[i];
-                var playerData = kv.Value;
-                var playerID = kv.Key;
-                var playerName = covalence.Players.FindPlayerById(playerID.ToString())?.Name ?? playerID.ToString();
+                embeds = new[]
+                {
+                    new
+                    {
+                        title = "Scrap Leaderboard",
+                        color = 15158332,
+                        fields = topBalances.Select((kv, index) => new
+                        {
+                            name =
+                                $"#{index + 1} {covalence.Players.FindPlayerById(kv.Key.ToString())?.Name ?? kv.Key.ToString()}",
+                            value = $"Balance: {kv.Value.scrap} Scrap",
+                            inline = false
+                        }).ToArray()
+                    }
+                }
+            };
 
-               
-                contentBuilder.Replace("${message.field.name}", $"#{i + 1} {playerName}");
-                contentBuilder.Replace("${message}", $"Balance: {playerData.scrap} Scrap");
-            }
-
-            string content = contentBuilder.ToString();
-
-            
-            Puts($"Constructed JSON: {content}");
+            // Convert the message to JSON
+            string content = JsonConvert.SerializeObject(discordMessage);
 
             if (string.IsNullOrEmpty(content))
             {
-                Puts("Constructed JSON is empty. Check topBalances and message variables.");
                 return;
             }
 
-          
+
+            // Send the message to Discord
             webrequest.Enqueue(webhookUrl, content, (code, response) =>
             {
                 if (code != 204)
                 {
                     Puts($"Discord responded with code {code}. Response: {response}");
-                }
-                else
-                {
-                    Puts("Discord message sent successfully.");
                 }
             }, this, RequestMethod.POST, new Dictionary<string, string> { ["Content-Type"] = "application/json" });
         }
